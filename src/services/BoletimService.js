@@ -1,4 +1,5 @@
 import NaoEncontrado from "../erros/NaoEncontrado.js";
+import RequicaoIncorreta from "../erros/RequisicaoIncorreta.js";
 import BoletimRepository from "../repositories/boletimRepository.js";
 import EnderecoRepository from "../repositories/enderecoRepository.js";
 import VeiculoRepository from "../repositories/VeiculoRepository.js";
@@ -20,6 +21,12 @@ class BoletimService {
     }
 
     async buscarPorParametros(parametros) {
+        const parametrosValidos =  [ 'periodoOcorrencia', 'cidade' ]
+        const parametrosRecebidos = Object.keys(parametros);
+        const parametrosInvalidos = parametrosRecebidos.filter(parametro => !parametrosValidos.includes(parametro));
+        if (parametrosInvalidos.length > 0) {
+            throw new RequicaoIncorreta("Parâmetros inválidos para busca de boletins");
+        }
         try {
             const busca = await processaBusca(parametros, this.enderecoRepository);
             if (!busca) {
@@ -28,16 +35,25 @@ class BoletimService {
             else if (busca !== null) {
                 const resultado = await this.boletimRepository.buscarComFiltros(busca);
 
-                if (!resultado || resultado.length === 0) {
+                if (!busca || Object.keys(busca).length === 0){
                     throw new NaoEncontrado("Boletim não encontrado"); // Lança erro caso não haja boletins
                 }
-                else {
-                    return resultado; // Retorna o resultado da busca
+
+                if (!resultado || resultado.length === 0) {
+                    throw new NaoEncontrado("Nenhum boletim encontrado.");
                 }
-            }
+                    return resultado; // Retorna o resultado da busca
+                
+            }   
 
         } catch (error) {
-            throw new Error(error);
+            if (error instanceof NaoEncontrado) {
+                throw error;
+            }
+            else {
+                console.error("Erro ao buscar boletins:", error); 
+                throw new Error("Erro interno ao buscar boletins")
+            }
         }
     }
 
